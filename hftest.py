@@ -1,10 +1,12 @@
-from langchain.embeddings.huggingface import HuggingFaceBgeEmbeddings
+from langchain.embeddings.huggingface import HuggingFaceInstructEmbeddings
 from llama_index import (ServiceContext, VectorStoreIndex,
                          load_index_from_storage, StorageContext,
+                         GPTVectorStoreIndex
                          )
 import os
 import file_reader
 from time import sleep
+
 
 #
 class HF:
@@ -20,19 +22,19 @@ class HF:
         os.environ['OPENAI_API_KEY'] = api_key
         self.documents = file_reader.file_reader().return_docs()
         self.save_path = r"C:\Users\User\Desktop\Учёба\опд\траю лламу\index data"
+        self.embed_model = HuggingFaceInstructEmbeddings(model_name="hkunlp/instructor-base")
         if not self.status():
-            embed_model = HuggingFaceBgeEmbeddings(model_name='all-MiniLM-L12-v2')
-            service_context = ServiceContext.from_defaults(embed_model=embed_model)
+            service_context = ServiceContext.from_defaults(embed_model=self.embed_model)
             self.index = VectorStoreIndex.from_documents(documents=
                                                          self.documents, service_context=service_context
                                                          )
             self.index.storage_context.persist(persist_dir=self.save_path)
         else:
             self.storage_context = StorageContext.from_defaults(persist_dir=self.save_path)
-            self.index = load_index_from_storage(self.storage_context)
+            self.index = load_index_from_storage(self.storage_context, embed_model=self.embed_model)
+
     def build_vectors(self):  # построение и сохранение векторного пространства (только при наличии доков)
-        embed_model = HuggingFaceBgeEmbeddings(model_name='all-MiniLM-L12-v2')
-        service_context = ServiceContext.from_defaults(embed_model=embed_model)
+        service_context = ServiceContext.from_defaults(embed_model=self.embed_model)
         self.index = VectorStoreIndex.from_documents(documents=
                                                      self.documents, service_context=service_context
                                                      )
@@ -40,11 +42,11 @@ class HF:
 
     def load_vectors(self):  # загрузка пространства
         self.storage_context = StorageContext.from_defaults(persist_dir=self.save_path)
-        self.index = load_index_from_storage(self.storage_context)
+        self.index = load_index_from_storage(self.storage_context, embed_model=self.embed_model)
 
     def test(self, request):  # тест пространства
-        query_engine = self.index.as_query_engine()
-        response = query_engine.query(request)
+        query_eng = self.index.as_query_engine()
+        response = query_eng.query(request)
         print(response)
 
     def interface(self):
